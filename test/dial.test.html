@@ -172,7 +172,8 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     }
     // 当前档位 high（非 max）→ 画布应为空
     const sumHigh=pxSum('.ed')
-    ok(sumHigh===0,'非 Max 档不绘制辐射（alpha 合计 '+sumHigh+'）')
+    const fxHigh=host.querySelector('.ed').getAttribute('data-fx')
+    ok(fxHigh==='off'&&sumHigh===0,'high 档 data-fx=off 且无绘制（alpha '+sumHigh+'）')
     // ── 配置页与生效性 ──
     ok(typeof SettingsComp==='function','设置页组件注册成功')
     const sHost=document.createElement('div'); document.body.insertBefore(sHost, document.getElementById('out'))
@@ -247,6 +248,26 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     ok(lblEl.textContent.indexOf('→')>=0,'标签显示区间箭头：'+lblEl.textContent)
     ok(lblEl.scrollWidth<=lblEl.clientWidth+1,'标签未被截断（scroll '+lblEl.scrollWidth+' / client '+lblEl.clientWidth+'）')
     ok(lblEl.textContent.indexOf('medium')>=0&&lblEl.textContent.indexOf('max')>=0,'标签里同时出现上下限：'+lblEl.textContent)
+    // ── 特效分级：xhigh 有、max 更多、其余没有 ──
+    const setLevel=(id)=>{
+      bandEcho.enabled=false; lastEcho=null
+      snap=Object.assign({},snap,{current:Object.assign({},snap.current,{reasoningEffort:id})})
+      listeners.forEach(fn=>fn())
+    }
+    setLevel('medium'); await new Promise(r2=>setTimeout(r2,250))
+    const sumMedium=pxSum('.ed'); const attrMedium=host.querySelector('.ed').getAttribute('data-fx')
+    setLevel('xhigh'); await new Promise(r2=>setTimeout(r2,300))
+    const sumXHigh=pxSum('.ed'); const attrXHigh=host.querySelector('.ed').getAttribute('data-fx')
+    setLevel('max'); await new Promise(r2=>setTimeout(r2,300))
+    const sumMax2=pxSum('.ed'); const attrMax=host.querySelector('.ed').getAttribute('data-fx')
+    ok(sumMedium===0&&attrMedium==='off','medium 无特效（data-fx=off，alpha 0）')
+    ok(sumXHigh>0&&attrXHigh==='xhigh','xhigh 有特效（data-fx=xhigh，alpha '+sumXHigh+'）')
+    ok(sumMax2>sumXHigh,'max 特效强于 xhigh（'+sumMax2+' > '+sumXHigh+'）')
+    ok(attrMax==='max','max 档 data-fx=max')
+    setLevel('high'); await new Promise(r2=>setTimeout(r2,200))
+    bandEcho.enabled=true
+    window.dispatchEvent(new Event('dsh-effort-dial:band'))
+    await new Promise(r2=>setTimeout(r2,150))
     // ── 实时显示 Auto 实际跑的档位 ──
     lastEcho={level:'xhigh',at:Date.now()}
     window.dispatchEvent(new Event('dsh-effort-dial:band'))
@@ -257,7 +278,7 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     const thumbLive=host.querySelector('.ed-thumb').style.left
     ok(Math.abs(parseFloat(thumbLive)-80)<1.5,'鲸鱼娘定位到实际档位 xhigh=80%，实际 '+thumbLive)
     const sumX=pxSum('.ed')
-    ok(sumX===0,'xhigh 档仍不绘制辐射（合计 '+sumX+'）')
+    ok(sumX>0,'xhigh 档有精简特效（alpha 合计 '+sumX+'）')
     lastEcho={level:'max',at:Date.now()}
     window.dispatchEvent(new Event('dsh-effort-dial:band'))
     await new Promise(r2=>setTimeout(r2,250))
