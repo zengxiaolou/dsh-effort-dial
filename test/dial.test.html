@@ -38,6 +38,18 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
       }
     }
     let scopeCalls=0
+    const posts=[]
+    window.fetch=function(url,opts){
+      const u=String(url)
+      if(u.indexOf('/effort-dial/state')===0){
+        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:{enabled:false,min:'high',max:'max'},band:{enabled:false,min:'high',max:'max',session:true}})})
+      }
+      if(u.indexOf('/effort-dial/band')===0){
+        posts.push(JSON.parse((opts&&opts.body)||'{}'))
+        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true})})
+      }
+      return Promise.resolve({ok:false,json:()=>Promise.resolve(null)})
+    }
     const ctx={
       inject:(deps,cb)=>cb({modelDirectories:{directoryFor:()=>directory},sessions:{scope:()=>{ scopeCalls++; return scopeCalls>2?{}:undefined }}}),
       slots:{inject:(n,cb)=>cb(),register:(o,c)=>{ if(o&&o.name==='settings.section'){SettingsComp=c}else{Comp=c} return()=>{} }},
@@ -167,6 +179,47 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
       const tr=host.querySelector('.ed-track')
       ok(tr.getBoundingClientRect().width>150,'滑杆轨道宽度已生效，实测 '+Math.round(tr.getBoundingClientRect().width))
     } else { ok(false,'找不到宽度滑块') }
+
+    // ── Auto 区间：A 按钮 → 编辑器 → 选上下限 → 高亮 → 拖动退出 ──
+    const aBtn=host.querySelector('.ed-auto')
+    ok(!!aBtn,'A 按钮存在（不再依赖 auto 档广告）')
+    aBtn.dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,80))
+    const ed=host.querySelector('.ed-band-editor')
+    ok(!!ed,'点击 A 后出现区间编辑器')
+    const chips=ed?ed.querySelectorAll('.ed-chip'):[]
+    ok(chips.length>=13,'编辑器含上下限共 12 个档位按钮 + 动作按钮，实际 '+chips.length)
+    // 选 下限=medium、上限=max
+    const pick=(rowLabel,tier)=>{
+      const rows=ed.querySelectorAll('.ed-band-row')
+      for(const row of rows){
+        if((row.textContent||'').indexOf(rowLabel)===0){
+          for(const b of row.querySelectorAll('.ed-chip')){ if((b.textContent||'')===tier.slice(0,3)) return b }
+        }
+      }
+      return null
+    }
+    const minChip=pick('下限','medium'); const maxChip=pick('上限','max')
+    ok(!!minChip&&!!maxChip,'能定位到下限/上限按钮')
+    minChip.dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,60))
+    maxChip.dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,60))
+    ok(posts.some(p=>p.min==='medium'&&p.enabled===true),'下限写入 medium 并发给宿主，posts='+JSON.stringify(posts.slice(-2)))
+    ok(posts.some(p=>p.max==='max'),'上限写入 max')
+    const labelNow=host.querySelector('.ed-label').textContent
+    ok(/Auto/.test(labelNow)&&/medium/.test(labelNow),'标签显示区间：'+labelNow)
+    ok(!!host.querySelector('.ed-band'),'轨道出现区间高亮')
+    // 拖动应退出自动
+    const trk3=host.querySelector('.ed-track'), slot3=host.querySelector('.ed-slot')
+    const r3=slot3.getBoundingClientRect()
+    const ev3=(t,x)=>new PointerEvent(t,{clientX:x,clientY:r3.top+r3.height/2,bubbles:true,pointerId:3,button:0,buttons:1,isPrimary:true})
+    trk3.dispatchEvent(ev3('pointerdown',r3.left+0.5*r3.width))
+    trk3.dispatchEvent(ev3('pointermove',r3.left+0.6*r3.width))
+    trk3.dispatchEvent(ev3('pointerup',r3.left+0.6*r3.width))
+    await new Promise(r2=>setTimeout(r2,120))
+    ok(posts.some(p=>p.enabled===false),'拖动后自动提交 enabled=false')
+    ok(!host.querySelector('.ed-band'),'区间高亮消失')
   }catch(e){ ok(false,'脚本异常: '+e.message) }
   if(window.__errors.length) ok(false,'未捕获错误: '+window.__errors.join(' | '))
   lines.push(fails===0?'\nALL PASS':' \nFAILURES: '+fails)
