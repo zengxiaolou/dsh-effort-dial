@@ -56,3 +56,18 @@ const routes = { routine: { provider: 'topen', model: 'flash', min: 'low', max: 
 ok(resolveRoute(routes, 'deep').model === 'pro', 'deep 桶解析到 pro 模型')
 ok(resolveRoute(routes, 'routine').band.max === 'high', 'routine 桶区间上限 high')
 ok(resolveRoute({}, 'deep') === null, '缺路由配置时返回 null')
+
+// ── 用户消息提取（多种事件形状）──────────────────────────────────
+import { lastUserText, collectText } from '../lib/index.js'
+const mk = (events) => ({ session: { events } })
+ok(lastUserText(mk([{ kind: 'user/message', data: { text: '把退款流程重构一下' } }])) === '把退款流程重构一下', '形状1: data.text')
+ok(lastUserText(mk([{ kind: 'user/message', data: { content: [{ type: 'text', text: '排查并发丢单的根因' }] } }])) === '排查并发丢单的根因', '形状2: data.content[].text')
+ok(lastUserText(mk([{ kind: 'user/message', data: { message: { content: [{ text: '帮我跑一下测试' }] } } }])) === '帮我跑一下测试', '形状3: data.message.content[].text')
+ok(lastUserText(mk([
+  { kind: 'user/message', data: { text: '第一条消息' } },
+  { kind: 'tool/call', data: { name: 'bash' } },
+  { kind: 'user/message', data: { text: '最后一条：请重构核心模块' } },
+])) === '最后一条：请重构核心模块', '取最新一条用户消息')
+ok(lastUserText(mk([{ kind: 'user/message', data: { source: { kind: 'agent-instructions' }, text: '系统注入的规则文件内容很长很长' } }])) === '', '跳过 agent-instructions 注入')
+ok(lastUserText(mk([{ kind: 'user/message', data: { source: { kind: 'agent-instructions' }, text: '注入' }, content: [{ text: '真正的用户任务：迁移数据库' }] }])) === '', '带 source 的消息整条跳过')
+ok(classifyBrief(lastUserText(mk([{ kind: 'user/message', data: { content: [{ text: '排查并发丢单的根因' }] } }]))).bucket === 'deep', '提取后能分出 deep')
