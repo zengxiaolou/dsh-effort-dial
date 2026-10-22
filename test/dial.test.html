@@ -40,11 +40,12 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     let scopeCalls=0
     const posts=[]
     let bandEcho={enabled:false,min:'high',max:'max'}
+    let lastEcho=null
     window.fetch=function(url,opts){
       const u=String(url)
       if(u.indexOf('/effort-dial/state')===0){
         const b=bandEcho
-        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:b,band:Object.assign({session:true},b)})})
+        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:b,band:Object.assign({session:true},b),last:lastEcho})})
       }
       if(u.indexOf('/effort-dial/band')===0){
         const body=JSON.parse((opts&&opts.body)||'{}')
@@ -221,6 +222,26 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     ok(/Auto/.test(lblEl.textContent),'胶囊标签显示 Auto 区间：'+lblEl.textContent)
     ok(lblEl.scrollWidth<=lblEl.clientWidth+1,'标签未被截断（scroll '+lblEl.scrollWidth+' / client '+lblEl.clientWidth+'）')
     ok(lblEl.textContent.indexOf('medium')>=0&&lblEl.textContent.indexOf('max')>=0,'标签里同时出现上下限：'+lblEl.textContent)
+    // ── 实时显示 Auto 实际跑的档位 ──
+    lastEcho={level:'xhigh',at:Date.now()}
+    window.dispatchEvent(new Event('dsh-effort-dial:band'))
+    await new Promise(r2=>setTimeout(r2,150))
+    const lblLive=host.querySelector('.ed-label').textContent
+    ok(lblLive.indexOf('xhigh')>=0,'标签显示上一轮实际档位：'+lblLive)
+    const thumbLive=host.querySelector('.ed-thumb').style.left
+    ok(Math.abs(parseFloat(thumbLive)-80)<1.5,'鲸鱼娘定位到实际档位 xhigh=80%，实际 '+thumbLive)
+    const sumX=pxSum('.ed')
+    ok(sumX===0,'xhigh 档仍不绘制辐射（合计 '+sumX+'）')
+    lastEcho={level:'max',at:Date.now()}
+    window.dispatchEvent(new Event('dsh-effort-dial:band'))
+    await new Promise(r2=>setTimeout(r2,250))
+    const thumbMax=host.querySelector('.ed-thumb').style.left
+    ok(Math.abs(parseFloat(thumbMax)-100)<1.5,'实际档位到 max 时鲸鱼娘到 100%，实际 '+thumbMax)
+    const sumMax=pxSum('.ed')
+    ok(sumMax>0,'实际档位是 max 时开始绘制辐射（alpha 合计 '+sumMax+'）')
+    lastEcho=null
+    window.dispatchEvent(new Event('dsh-effort-dial:band'))
+    await new Promise(r2=>setTimeout(r2,120))
     // 拖动退出自动
     const trk3=host.querySelector('.ed-track'), slot3=host.querySelector('.ed-slot')
     const r3=slot3.getBoundingClientRect()
