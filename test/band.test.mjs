@@ -71,3 +71,13 @@ ok(lastUserText(mk([
 ok(lastUserText(mk([{ kind: 'user/message', data: { source: { kind: 'agent-instructions' }, text: '系统注入的规则文件内容很长很长' } }])) === '', '跳过 agent-instructions 注入')
 ok(lastUserText(mk([{ kind: 'user/message', data: { source: { kind: 'agent-instructions' }, text: '注入' }, content: [{ text: '真正的用户任务：迁移数据库' }] }])) === '', '带 source 的消息整条跳过')
 ok(classifyBrief(lastUserText(mk([{ kind: 'user/message', data: { content: [{ text: '排查并发丢单的根因' }] } }]))).bucket === 'deep', '提取后能分出 deep')
+
+// ── 事件访问器：真实字段是 eventsSnapshot ────────────────────────
+import { sessionEvents } from '../lib/index.js'
+const snap = [{ type: 'user/message', data: { text: '重构这个模块' } }]
+ok(sessionEvents({ session: { eventsSnapshot: snap } }).length === 1, '从 eventsSnapshot 读取事件')
+ok(sessionEvents({ session: { events: snap } }).length === 1, '回退到 events 也能读')
+ok(sessionEvents({ session: { snapshotEvents: () => snap } }).length === 1, '支持 snapshotEvents() 方法')
+ok(sessionEvents({}). length === 0, '缺 session 时返回空数组')
+ok(lastUserText({ session: { eventsSnapshot: snap } }) === '重构这个模块', 'eventsSnapshot 下也能提取用户消息')
+ok(classifyBrief(lastUserText({ session: { eventsSnapshot: snap } })).bucket === 'deep', 'eventsSnapshot 下能分出 deep')
