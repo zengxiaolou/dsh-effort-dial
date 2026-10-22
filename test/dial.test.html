@@ -39,13 +39,19 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     }
     let scopeCalls=0
     const posts=[]
+    let bandEcho={enabled:false,min:'high',max:'max'}
     window.fetch=function(url,opts){
       const u=String(url)
       if(u.indexOf('/effort-dial/state')===0){
-        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:{enabled:false,min:'high',max:'max'},band:{enabled:false,min:'high',max:'max',session:true}})})
+        const b=bandEcho
+        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:b,band:Object.assign({session:true},b)})})
       }
       if(u.indexOf('/effort-dial/band')===0){
-        posts.push(JSON.parse((opts&&opts.body)||'{}'))
+        const body=JSON.parse((opts&&opts.body)||'{}')
+        posts.push(body)
+        if(typeof body.enabled==='boolean') bandEcho.enabled=body.enabled
+        if(body.min) bandEcho.min=body.min
+        if(body.max) bandEcho.max=body.max
         return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true})})
       }
       return Promise.resolve({ok:false,json:()=>Promise.resolve(null)})
@@ -199,7 +205,10 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     await new Promise(r2=>setTimeout(r2,80))
     ok(posts.some(p=>p.min==='medium'),'下限滑块提交 medium，posts='+JSON.stringify(posts.slice(-2)))
     ok(posts.some(p=>p.max==='max'),'上限滑块提交 max')
-    ok(/Auto/.test(host.querySelector('.ed-label').textContent),'胶囊标签显示 Auto 区间：'+host.querySelector('.ed-label').textContent)
+    const lblEl=host.querySelector('.ed-label')
+    ok(/Auto/.test(lblEl.textContent),'胶囊标签显示 Auto 区间：'+lblEl.textContent)
+    ok(lblEl.scrollWidth<=lblEl.clientWidth+1,'标签未被截断（scroll '+lblEl.scrollWidth+' / client '+lblEl.clientWidth+'）')
+    ok(lblEl.textContent.indexOf('medium')>=0&&lblEl.textContent.indexOf('max')>=0,'标签里同时出现上下限：'+lblEl.textContent)
     // 拖动退出自动
     const trk3=host.querySelector('.ed-track'), slot3=host.querySelector('.ed-slot')
     const r3=slot3.getBoundingClientRect()
