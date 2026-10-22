@@ -1,0 +1,148 @@
+<!doctype html><html data-ds-dark-theme="true"><head><meta charset="utf-8">
+<style>
+:root{--dsw-alias-bg-layer-1:#181c25;--dsw-alias-border-l2:rgba(122,132,152,.34);--dsw-alias-border-l3:rgba(122,132,152,.55);--dsw-alias-label-primary:#e6ebf5;--dsw-alias-label-secondary:#98a2b6;--dsw-alias-label-tertiary:#7b8496;--dsw-alias-brand-primary:#5b8cff;--dsw-alias-state-error-primary:#e5484d}
+body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
+</style></head><body>
+<div id="host" style="margin-bottom:16px"></div>
+<pre id="out">pending…</pre>
+<script>window.__errors=[];window.onerror=function(m,s,l){window.__errors.push(m+' @'+l)};window.onunhandledrejection=function(e){window.__errors.push('rej:'+(e.reason&&e.reason.message||e.reason))}</script>
+<script src="file:///tmp/rt/react.development.js"></script>
+<script src="file:///tmp/rt/react-dom.development.js"></script>
+<script>var F=null;window.__ModuleLoader__={load:function(o){F=o.factory}}</script>
+<script src="file:///Users/ruler/Documents/work/dsh-effort-dial/lib/client.js"></script>
+<script>
+(async function(){
+  const lines=[]; let fails=0
+  const ok=(cond,msg)=>{ lines.push((cond?'PASS':'FAIL')+'  '+msg); if(!cond) fails++ }
+  try{
+    const mod=F(function(id){ if(id==='react') return React; throw new Error('unexpected require '+id) })
+    let Comp=null
+    const TIERS=[['minimal','Minimal'],['low','Low'],['medium','Medium'],['high','High'],['xhigh','XHigh'],['max','Max']]
+    const efforts=TIERS.map(([id,name])=>({id,name}))
+    let snap={status:'ready',current:{provider:'p',model:'m',reasoningEffort:'low'},
+      groups:[{id:'p',models:[{id:'m',name:'Model',reasoning:{efforts}}]}]}
+    const listeners=new Set()
+    function setEffort(id){
+      snap=Object.assign({},snap,{current:Object.assign({},snap.current,{reasoningEffort:id})})
+      listeners.forEach(function(fn){fn()})
+    }
+    let selectCalls=[]
+    let mode='ok'
+    const directory={
+      store:{ getSnapshot:()=>snap, subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)} },
+      load:()=>Promise.resolve(),
+      select:(sel)=>{ selectCalls.push(sel)
+        if(mode==='fail') return Promise.resolve({ok:false,error:{message:'denied-by-host'}})
+        setTimeout(function(){ setEffort(sel.reasoningEffort) },0)
+        return Promise.resolve({ok:true})
+      }
+    }
+    let scopeCalls=0
+    const ctx={
+      inject:(deps,cb)=>cb({modelDirectories:{directoryFor:()=>directory},sessions:{scope:()=>{ scopeCalls++; return scopeCalls>2?{}:undefined }}}),
+      slots:{inject:(n,cb)=>cb(),register:(o,c)=>{Comp=c;return()=>{}}},
+      effect(){}
+    }
+    mod.apply(ctx)
+    ok(typeof Comp==='function','组件注册成功')
+
+    const host=document.getElementById('host')
+    const root=ReactDOM.createRoot(host)
+    // 不给 props.sessionId，只靠 DOM 兜底 + 轮询重试
+    var marker=document.createElement('div'); marker.setAttribute('data-conversation-session','s-dom'); document.body.appendChild(marker)
+    const sessionsSvc={scope:()=>{ scopeCalls++; return scopeCalls>2?{}:undefined }}
+    root.render(React.createElement(Comp,{directories:{directoryFor:()=>directory},sessions:sessionsSvc}))
+    await new Promise(r=>setTimeout(r,1500))
+
+    const el=host.querySelector('.ed')
+    ok(!!el,'渲染出 .ed 胶囊')
+    const ticks=host.querySelectorAll('.ed-tick')
+    ok(ticks.length===6,'刻度数量 6，实际 '+ticks.length)
+    const thumbQ=()=>host.querySelector('.ed-thumb')
+    const thumb=thumbQ()
+    const slot=host.querySelector('.ed-slot')
+    ok(!!thumb && !!slot,'滑块与 slot 都存在')
+    // 时间序列采样：定位初始位置何时被写成 0
+    const trace=[]
+    for (const delay of [0,50,150,300,450]) {
+      await new Promise(r2=>setTimeout(r2, delay===0?0:delay - (trace.length? [0,50,150,300,450][trace.length-1]:0)))
+      trace.push(delay+'ms:'+host.querySelector('.ed-thumb').style.left)
+    }
+    lines.push('trace  '+trace.join('  '))
+    lines.push('dbg count='+((window.__dbg||[]).length))
+    lines.push('dbg first: '+((window.__dbg||[]).slice(0,4).join(' | ')))
+    lines.push('dbg last: '+((window.__dbg||[]).slice(-6).join(' | ')))
+    window.dispatchEvent(new Event('resize'))
+    await new Promise(r2=>setTimeout(r2,30))
+    lines.push('after resize: '+host.querySelector('.ed-thumb').style.left)
+    const lbl=host.querySelector('.ed-label').textContent
+    lines.push('label now: '+lbl)
+    const pct=parseFloat(thumbQ().style.left)
+    ok(Math.abs(pct-20)<0.5,'low 档滑块应 20%，实际 '+pct)
+    ok(host.querySelector('.ed-label').textContent==='Low','标签应为 Low，实际 '+host.querySelector('.ed-label').textContent)
+    ok(!!host.querySelector('canvas.ed-fx'),'canvas 辐射层存在')
+
+    // 拖动到 60% → 应提交 high
+    const r=slot.getBoundingClientRect()
+    const px=(f)=>r.left+f*r.width
+    const ev=(t,x)=>new PointerEvent(t,{clientX:x,clientY:r.top+r.height/2,bubbles:true,pointerId:1,button:0,buttons:1,isPrimary:true})
+    const track=host.querySelector('.ed-track')
+    track.dispatchEvent(ev('pointerdown',px(0.2)))
+    track.dispatchEvent(ev('pointermove',px(0.6)))
+    await new Promise(r2=>setTimeout(r2,40))
+    track.dispatchEvent(ev('pointerup',px(0.6)))
+    await new Promise(r2=>setTimeout(r2,80))
+    ok(selectCalls.length===1,'拖动一次只提交一次，实际 '+selectCalls.length)
+    ok(selectCalls[0] && selectCalls[0].reasoningEffort==='high','提交档位应为 high，实际 '+(selectCalls[0]&&selectCalls[0].reasoningEffort))
+    ok(Math.abs(parseFloat(thumbQ().style.left)-60)<0.6,'提交后滑块应 60%，实际 '+host.querySelector('.ed-thumb').style.left)
+    ok(host.querySelector('.ed-label').textContent==='High','提交后标签应为 High，实际 '+host.querySelector('.ed-label').textContent)
+
+    // 失败路径：宿主拒绝 → 必须弹回旧档并显示错误
+    mode='fail'
+    const before=thumbQ().style.left
+    track.dispatchEvent(ev('pointerdown',px(0.6)))
+    track.dispatchEvent(ev('pointermove',px(0.1)))
+    await new Promise(r2=>setTimeout(r2,40))
+    track.dispatchEvent(ev('pointerup',px(0.1)))
+    await new Promise(r2=>setTimeout(r2,120))
+    const after=thumbQ().style.left
+    ok(host.querySelector('.ed').getAttribute('data-error')==='true','被拒绝时应有 data-error')
+    ok((host.querySelector('.ed').getAttribute('title')||'').includes('denied-by-host'),'错误原文应出现在 title')
+    ok(Math.abs(parseFloat(after)-60)<1.5,'被拒绝后滑块应弹回 60%，实际 '+after+'（松手前 '+before+'）')
+    ok(host.querySelector('.ed-label').textContent==='High','被拒绝后标签应回到 High，实际 '+host.querySelector('.ed-label').textContent)
+
+    // ── 场景：拖动过程中父组件高频重渲染（模拟输入框/流式输出）──
+    const host2=document.createElement('div'); host2.id='host2'; document.body.insertBefore(host2, document.getElementById('out'))
+    const root2=ReactDOM.createRoot(host2)
+    function Bouncer(props){
+      const [t,setT]=React.useState(0)
+      React.useEffect(function(){ const i=setInterval(function(){setT(function(x){return x+1})},50); return function(){clearInterval(i)} },[])
+      return React.createElement(props.Child, Object.assign({}, props.childProps, {tick:t}))
+    }
+    mode='ok'
+    const props2={directories:{directoryFor:()=>directory},sessions:{scope:()=>({})},sessionId:'s1'}
+    root2.render(React.createElement(Bouncer,{Child:Comp, childProps:props2}))
+    await new Promise(r2=>setTimeout(r2,120))
+    const el2=host2.querySelector('.ed')
+    ok(!!el2,'第二个实例渲染')
+    const track2=host2.querySelector('.ed-track')
+    const slot2=host2.querySelector('.ed-slot')
+    const r2b=slot2.getBoundingClientRect()
+    const px2=f=>r2b.left+f*r2b.width
+    const ev2=(t,x)=>new PointerEvent(t,{clientX:x,clientY:r2b.top+r2b.height/2,bubbles:true,pointerId:2,button:0,buttons:1,isPrimary:true})
+    track2.dispatchEvent(ev2('pointerdown',px2(0.5)))
+    track2.dispatchEvent(ev2('pointermove',px2(0.7)))
+    const samples=[]
+    for(let i=0;i<8;i++){ await new Promise(r2=>setTimeout(r2,50)); samples.push(host2.querySelector('.ed-thumb').style.left) }
+    const nums=samples.map(v=>parseFloat(v))
+    const min=Math.min.apply(null,nums), max=Math.max.apply(null,nums)
+    ok(Math.abs(parseFloat(samples[samples.length-1])-70)<1.5,'拖动中父级重渲染时仍应跟手到 70%，样本 '+samples.join(' '))
+    track2.dispatchEvent(ev2('pointerup',px2(0.7)))
+    await new Promise(r2=>setTimeout(r2,200))
+  }catch(e){ ok(false,'脚本异常: '+e.message) }
+  if(window.__errors.length) ok(false,'未捕获错误: '+window.__errors.join(' | '))
+  lines.push(fails===0?'\nALL PASS':' \nFAILURES: '+fails)
+  document.getElementById('out').textContent=lines.join('\n')
+  document.title=fails===0?'ALLPASS':'FAIL'+fails
+})()
+</script></body></html>
