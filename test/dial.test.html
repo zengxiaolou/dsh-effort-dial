@@ -41,15 +41,17 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     const posts=[]
     let bandEcho={enabled:false,min:'high',max:'max'}
     let lastEcho=null
+    let routesEcho={routine:null,deep:null}
     window.fetch=function(url,opts){
       const u=String(url)
       if(u.indexOf('/effort-dial/state')===0){
         const b=bandEcho
-        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:b,band:Object.assign({session:true},b),last:lastEcho})})
+        return Promise.resolve({ok:true,json:()=>Promise.resolve({ok:true,tiers:['minimal','low','medium','high','xhigh','max'],global:b,band:Object.assign({session:true},b),last:lastEcho,routes:routesEcho})})
       }
       if(u.indexOf('/effort-dial/band')===0){
         const body=JSON.parse((opts&&opts.body)||'{}')
         posts.push(body)
+        if(body.routes){ Object.assign(routesEcho, body.routes) }
         if(typeof body.enabled==='boolean') bandEcho.enabled=body.enabled
         if(body.min) bandEcho.min=body.min
         if(body.max) bandEcho.max=body.max
@@ -199,6 +201,19 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
       ok(tr.getBoundingClientRect().width>150,'滑杆轨道宽度已生效，实测 '+Math.round(tr.getBoundingClientRect().width))
     } else { ok(false,'找不到宽度滑块') }
 
+    // ── 模型路由配置 ──
+    const routeIn=sHost.querySelector('input[data-role="route-deep"]')
+    ok(!!routeIn,'设置页有 deep 路由输入框')
+    const setNative3=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set
+    setNative3.call(routeIn,'topen/deepseek-v4-pro-0813')
+    routeIn.dispatchEvent(new Event('input',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,60))
+    const saveBtn=sHost.querySelector('button[data-role="route-deep-save"]')
+    ok(!!saveBtn,'有 deep 保存按钮')
+    saveBtn.dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,120))
+    ok(posts.some(p=>p.routes&&p.routes.deep&&p.routes.deep.model==='deepseek-v4-pro-0813'),'保存后提交 deep 路由，posts='+JSON.stringify(posts.filter(p=>p.routes)))
+    ok(routesEcho.deep&&routesEcho.deep.provider==='topen','宿主侧记录 provider=topen')
     // ── Auto 区间：A 只做开关；上下限在设置页用滑块调 ──
     const aBtn=host.querySelector('.ed-auto')
     ok(!!aBtn,'A 按钮存在（不依赖 auto 档广告）')
