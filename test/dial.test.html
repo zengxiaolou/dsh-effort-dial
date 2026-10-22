@@ -16,7 +16,7 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
   const ok=(cond,msg)=>{ lines.push((cond?'PASS':'FAIL')+'  '+msg); if(!cond) fails++ }
   try{
     const mod=F(function(id){ if(id==='react') return React; throw new Error('unexpected require '+id) })
-    let Comp=null
+    let Comp=null, SettingsComp=null
     const TIERS=[['minimal','Minimal'],['low','Low'],['medium','Medium'],['high','High'],['xhigh','XHigh'],['max','Max']]
     const efforts=TIERS.map(([id,name])=>({id,name}))
     let snap={status:'ready',current:{provider:'p',model:'m',reasoningEffort:'low'},
@@ -40,7 +40,7 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     let scopeCalls=0
     const ctx={
       inject:(deps,cb)=>cb({modelDirectories:{directoryFor:()=>directory},sessions:{scope:()=>{ scopeCalls++; return scopeCalls>2?{}:undefined }}}),
-      slots:{inject:(n,cb)=>cb(),register:(o,c)=>{Comp=c;return()=>{}}},
+      slots:{inject:(n,cb)=>cb(),register:(o,c)=>{ if(o&&o.name==='settings.section'){SettingsComp=c}else{Comp=c} return()=>{} }},
       effect(){}
     }
     mod.apply(ctx)
@@ -139,6 +139,34 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     ok(Math.abs(parseFloat(samples[samples.length-1])-70)<1.5,'拖动中父级重渲染时仍应跟手到 70%，样本 '+samples.join(' '))
     track2.dispatchEvent(ev2('pointerup',px2(0.7)))
     await new Promise(r2=>setTimeout(r2,200))
+
+    // ── 配置页与生效性 ──
+    ok(typeof SettingsComp==='function','设置页组件注册成功')
+    const sHost=document.createElement('div'); document.body.insertBefore(sHost, document.getElementById('out'))
+    const sRoot=ReactDOM.createRoot(sHost)
+    sRoot.render(React.createElement(SettingsComp,{}))
+    await new Promise(r2=>setTimeout(r2,80))
+    const txt=sHost.textContent||''
+    ok(txt.includes('动画')&&txt.includes('Auto')&&txt.includes('轨道宽度'),'设置页三项都在：'+txt.slice(0,40))
+    const btns=sHost.querySelectorAll('button')
+    ok(btns.length>=2,'设置页有开关按钮，数量 '+btns.length)
+    btns[0].dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,60))
+    const stored=JSON.parse(localStorage.getItem('dsh-effort-dial.config.v1')||'{}')
+    ok(stored.animate===false,'点击后动画开关持久化为 false，实际 '+JSON.stringify(stored))
+    const dialEl=host.querySelector('.ed')
+    ok(dialEl.getAttribute('data-animate')==='false','滑杆响应配置：data-animate=false')
+    const range=sHost.querySelector('input[type=range]')
+    if(range){
+      const setNative=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set
+      setNative.call(range,'180')
+      range.dispatchEvent(new Event('input',{bubbles:true}))
+      await new Promise(r2=>setTimeout(r2,80))
+      const st2=JSON.parse(localStorage.getItem('dsh-effort-dial.config.v1')||'{}')
+      ok(st2.trackWidth===180,'拖动宽度后持久化为 180，实际 '+JSON.stringify(st2))
+      const tr=host.querySelector('.ed-track')
+      ok(tr.getBoundingClientRect().width>150,'滑杆轨道宽度已生效，实测 '+Math.round(tr.getBoundingClientRect().width))
+    } else { ok(false,'找不到宽度滑块') }
   }catch(e){ ok(false,'脚本异常: '+e.message) }
   if(window.__errors.length) ok(false,'未捕获错误: '+window.__errors.join(' | '))
   lines.push(fails===0?'\nALL PASS':' \nFAILURES: '+fails)

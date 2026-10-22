@@ -1,6 +1,6 @@
 {
   "name": "dsh-effort-dial",
-  "version": "0.3.13",
+  "version": "0.4.0",
   "description": "DSH Web UI plugin: a rheostat-style reasoning-effort slider in the composer — drag through the model's advertised thinking levels, snap on release, writes through the official model directory.",
   "license": "MIT",
   "type": "module",
