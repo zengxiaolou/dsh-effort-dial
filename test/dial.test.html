@@ -206,12 +206,11 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     await new Promise(r2=>setTimeout(r2,120))
     ok(posts.some(p=>p.enabled===true),'点 A 向宿主提交 enabled=true，posts='+JSON.stringify(posts.slice(-2)))
     ok(!!host.querySelector('.ed-band'),'轨道出现区间高亮')
-    ok(!host.querySelector('.ed-auto'),'自动模式下不再显示 A 按钮（标签已说明）')
+    ok(!!host.querySelector('.ed-auto'),'自动模式下仍保留小圆钮 A')
     // 点标签关闭自动
     host.querySelector('.ed-label').dispatchEvent(new MouseEvent('click',{bubbles:true}))
     await new Promise(r2=>setTimeout(r2,120))
     ok(posts.some(p=>p.enabled===false),'点击标签关闭自动，posts='+JSON.stringify(posts.slice(-1)))
-    ok(!!host.querySelector('.ed-auto'),'关闭后 A 按钮回来')
     // 重新开启，继续后面的滑块与拖动断言
     bandEcho.enabled=true
     window.dispatchEvent(new Event('dsh-effort-dial:band'))
@@ -229,7 +228,8 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     ok(posts.some(p=>p.min==='medium'),'下限滑块提交 medium，posts='+JSON.stringify(posts.slice(-2)))
     ok(posts.some(p=>p.max==='max'),'上限滑块提交 max')
     const lblEl=host.querySelector('.ed-label')
-    ok(/Auto/.test(lblEl.textContent),'胶囊标签显示 Auto 区间：'+lblEl.textContent)
+    ok(lblEl.textContent.indexOf('Auto')<0,'标签不含 Auto 字样：'+lblEl.textContent)
+    ok(lblEl.textContent.indexOf('→')>=0,'标签显示区间箭头：'+lblEl.textContent)
     ok(lblEl.scrollWidth<=lblEl.clientWidth+1,'标签未被截断（scroll '+lblEl.scrollWidth+' / client '+lblEl.clientWidth+'）')
     ok(lblEl.textContent.indexOf('medium')>=0&&lblEl.textContent.indexOf('max')>=0,'标签里同时出现上下限：'+lblEl.textContent)
     // ── 实时显示 Auto 实际跑的档位 ──
@@ -238,6 +238,7 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     await new Promise(r2=>setTimeout(r2,150))
     const lblLive=host.querySelector('.ed-label').textContent
     ok(lblLive.indexOf('xhigh')>=0,'标签显示上一轮实际档位：'+lblLive)
+    ok(lblLive.indexOf('Auto')<0,'实际档位标签也不含 Auto：'+lblLive)
     const thumbLive=host.querySelector('.ed-thumb').style.left
     ok(Math.abs(parseFloat(thumbLive)-80)<1.5,'鲸鱼娘定位到实际档位 xhigh=80%，实际 '+thumbLive)
     const sumX=pxSum('.ed')
