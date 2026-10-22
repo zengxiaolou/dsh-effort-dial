@@ -206,6 +206,16 @@ body{background:#0b0d12;color:#e6ebf5;font:12px/1.6 monospace;padding:16px}
     await new Promise(r2=>setTimeout(r2,120))
     ok(posts.some(p=>p.enabled===true),'点 A 向宿主提交 enabled=true，posts='+JSON.stringify(posts.slice(-2)))
     ok(!!host.querySelector('.ed-band'),'轨道出现区间高亮')
+    ok(!host.querySelector('.ed-auto'),'自动模式下不再显示 A 按钮（标签已说明）')
+    // 点标签关闭自动
+    host.querySelector('.ed-label').dispatchEvent(new MouseEvent('click',{bubbles:true}))
+    await new Promise(r2=>setTimeout(r2,120))
+    ok(posts.some(p=>p.enabled===false),'点击标签关闭自动，posts='+JSON.stringify(posts.slice(-1)))
+    ok(!!host.querySelector('.ed-auto'),'关闭后 A 按钮回来')
+    // 重新开启，继续后面的滑块与拖动断言
+    bandEcho.enabled=true
+    window.dispatchEvent(new Event('dsh-effort-dial:band'))
+    await new Promise(r2=>setTimeout(r2,120))
     const bandMin=sHost.querySelector('input[data-role="band-min"]')
     const bandMax=sHost.querySelector('input[data-role="band-max"]')
     ok(!!bandMin&&!!bandMax,'设置页有下限/上限滑块')

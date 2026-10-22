@@ -34,3 +34,25 @@ const back = loadState(file)
 ok(back.global.enabled === true && back.global.min === 'medium' && back.global.max === 'max', '状态可写可读')
 
 console.log(pass > 0 && !process.exitCode ? '\nALL PASS (' + pass + ')' : '\nFAILURES')
+
+// ── 分类 + 模型路由 ────────────────────────────────────────────────
+import { classifyBrief, decideBandTier, clampToModel, resolveRoute } from '../lib/policy.js'
+ok(classifyBrief('把这个模块重构成可测试的').bucket === 'deep', '重构类任务归入 deep')
+ok(classifyBrief('帮我跑一下测试并列出失败项').bucket === 'routine', '跑测试/列出归入 routine')
+ok(classifyBrief('').bucket === 'routine', '空输入不炸，归 routine')
+ok(classifyBrief('x'.repeat(500)).bucket === 'deep', '长文本归入 deep')
+
+const band = { min: 'medium', max: 'max' }
+ok(decideBandTier(band, { errors: 0, calmSteps: 0 }) === 'medium', '无错误停在下限')
+ok(decideBandTier(band, { errors: 1, calmSteps: 0 }) === 'high', '一次错误升到 high')
+ok(decideBandTier(band, { errors: 2, calmSteps: 0 }) === 'xhigh', '两次错误升到 xhigh')
+ok(decideBandTier(band, { errors: 0, calmSteps: 5 }) === 'medium', '连续无错回落下限')
+
+ok(clampToModel('medium', ['high', 'max']) === 'high', '目标模型没有 medium 时取最近档 high')
+ok(clampToModel('max', ['low', 'high']) === 'high', '目标模型封顶 high 时收敛到 high')
+ok(clampToModel('medium', []) === undefined, '模型无档位声明时返回 undefined')
+
+const routes = { routine: { provider: 'topen', model: 'flash', min: 'low', max: 'high' }, deep: { provider: 'topen', model: 'pro', min: 'high', max: 'max' } }
+ok(resolveRoute(routes, 'deep').model === 'pro', 'deep 桶解析到 pro 模型')
+ok(resolveRoute(routes, 'routine').band.max === 'high', 'routine 桶区间上限 high')
+ok(resolveRoute({}, 'deep') === null, '缺路由配置时返回 null')
