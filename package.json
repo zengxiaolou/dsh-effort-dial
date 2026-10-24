@@ -31,5 +31,18 @@
         "@deepseek-ai/dsh-client-locale"
       ]
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zengxiaolou/dsh-effort-dial"
+  },
+  "homepage": "https://github.com/zengxiaolou/dsh-effort-dial",
+  "bugs": {
+    "url": "https://github.com/zengxiaolou/dsh-effort-dial/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness"
+  ]
 }
