@@ -45,11 +45,16 @@ DeepSeek Harness（DSH）插件：输入框里的「推理强度滑杆」。
 ## 安装
 
 ```bash
+# 从 npm（推荐）
+dsh plugin --profile <profile> add @zengevent/dsh-effort-dial
+
 # 本地目录
 dsh plugin --profile <profile> add /path/to/dsh-effort-dial
 # 或本仓库内（DSH 宿主）
 # plugin_manager install_bundle file:/path/to/dsh-effort-dial
 ```
+
+装完**重启 DSH**（bundle 只在宿主启动时装载）。要求 `dsh >= 0.2.0-rc.1`。
 
 配置写入 profile 的 `.effort-dial/state.json`（区间、路由、每会话最近一次派档）。
 
@@ -61,6 +66,7 @@ dsh plugin --profile <profile> add /path/to/dsh-effort-dial
 ## 测试
 
 ```bash
+node test/contract.test.mjs   # 契约预检：客户端工厂 id / 补丁 name 必须等于包名
 node test/band.test.mjs      # 策略与提取的纯函数单测
 ./test/run.sh                # 真实 React + DOM 渲染与交互断言（headless Chrome 截图）
 ```
