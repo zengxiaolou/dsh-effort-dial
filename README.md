@@ -2,6 +2,14 @@
 
 ![dsh-effort-dial](https://raw.githubusercontent.com/zengxiaolou/dsh-effort-dial/main/docs/images/promo.png)
 
+<p>
+<a href="https://www.npmjs.com/package/@zengevent/dsh-effort-dial"><img alt="npm" src="https://img.shields.io/npm/v/@zengevent%2Fdsh-effort-dial?color=2f81f7&label=npm"></a>
+<a href="https://www.npmjs.com/package/@zengevent/dsh-effort-dial"><img alt="downloads" src="https://img.shields.io/npm/dw/@zengevent%2Fdsh-effort-dial?color=3fb950"></a>
+<a href="https://github.com/zengxiaolou/dsh-effort-dial/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/@zengevent%2Fdsh-effort-dial?color=bf8700"></a>
+<img alt="dsh plugin" src="https://img.shields.io/badge/DSH-plugin-7aa2ff">
+<a href="https://github.com/zengxiaolou/dsh-effort-dial/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/zengxiaolou/dsh-effort-dial?color=8250df"></a>
+</p>
+
 
 DeepSeek Harness（DSH）插件：输入框里的「推理强度滑杆」。
 
