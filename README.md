@@ -1,5 +1,8 @@
 # dsh-effort-dial
 
+![dsh-effort-dial](https://raw.githubusercontent.com/zengxiaolou/dsh-effort-dial/main/docs/images/promo.png)
+
+
 DeepSeek Harness（DSH）插件：输入框里的「推理强度滑杆」。
 
 拖动鲸鱼娘选择思考档位，松手吸附到停位并写入当前会话；支持「自动区间」（在选定区间内按失败升级派档）、
