@@ -12,7 +12,9 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   cd - >/dev/null
 }
 OUT="/tmp/dial-test-$(date +%s).png"
+# 断言链里有 setTimeout 序列（拖动 → 提交 → 被拒 → 回弹），5000ms 的虚拟时间预算常常
+# 停在 pending…（截图里断言没跑完却像通过）。给到 30000ms，让断言全部落地再截图。
 "$CHROME" --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \
-  --virtual-time-budget=5000 --window-size=1000,840 \
+  --virtual-time-budget=30000 --window-size=1000,900 \
   --screenshot="$OUT" "file://$(pwd)/test/dial.test.html" >/dev/null 2>&1
 echo "截图（含断言结果）: $OUT"
